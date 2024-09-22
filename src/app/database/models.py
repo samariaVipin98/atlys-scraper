@@ -1,8 +1,7 @@
 from datetime import timedelta
 import os
-from fastapi import HTTPException, Depends, Request, status
-from database.configure import SessionLocal
-from repo.users.user_repo import check_password, create_access_token, get_password_hash, verify_access_token
+from repo.utils.utils import check_password, create_access_token, get_password_hash
+from fastapi import HTTPException
 from database.configure import Base, engine
 from sqlalchemy import Column, Float, Integer, String
 
@@ -51,23 +50,7 @@ class User(Base):
         else:
             raise HTTPException(status_code=400, detail="Invalid password")
 
-    @classmethod
-    def get_current_user(cls, request: Request, db):
-        credentials_exception = HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Could not validate credentials",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-        # Extract token from the Authorization header
-        if "authorization" not in request.headers:
-            raise credentials_exception
-        
-        token = request.headers['authorization'].split(" ")[1]
-        token_data = verify_access_token(token, credentials_exception)
-        db_user = cls.get(token_data.username, db)
-        if db_user is None:
-            raise credentials_exception
-        return db_user
+    
 
         
 # Product model
@@ -78,7 +61,26 @@ class Product(Base):
     price = Column(Float)
     image_url = Column(String)
 
+    @classmethod
+    def create(cls, title:str, price: Float, image_url: str, db):
+        new_product = Product(title=title, price=price, image_url=image_url)
+        db.add(new_product)
+        db.commit()
+        db.refresh(new_product)
+        return new_product
+
+
+    @classmethod
+    def get(cls, title, db):
+        return db.query(cls).filter(Product.title == title).first()
     
+    @classmethod
+    def update_price(cls, title: str, new_price: Float, db):
+        product = cls.get(title, db)
+        product.price = new_price
+        db.commit()
+        db.refresh(product)
+        return
 
 # Create the database tables
 Base.metadata.create_all(bind=engine)

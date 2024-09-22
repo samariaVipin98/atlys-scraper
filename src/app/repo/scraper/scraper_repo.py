@@ -2,6 +2,7 @@ import os
 import requests
 from bs4 import BeautifulSoup
 from typing import List, Dict, Optional
+from database.configure import get_db
 from repo.notification.notification import send_email
 from database.models import Product, User
 from schema.scraper.scraper_request import ScraperRequest
@@ -15,7 +16,7 @@ def process_data(db, request: ScraperRequest, current_user: User):
 
 class Scraper:
     def __init__(self, pages: int, max_retries: Optional[int] = 3, proxy: Optional[str] = None):
-        self.pages = pages
+        self.pages = pages if pages else 1
         self.proxy = proxy
         self.base_url = "https://dentalstall.com/shop"
         self.max_retries = max_retries
@@ -59,23 +60,21 @@ class Scraper:
                 image_url = image_element["data-lazy-src"] if image_element else "No image"
                 image_path = self.download_image(image_url, title)
 
+                productObj = Product()
                 # Check if product exists
-                product = db.query(Product).filter(Product.title == title).first()
+                product = productObj.get(title, db)
 
                 if product:
                     # If product exists, check for price change
                     if product.price != price:
-                        product.price = price
-                        db.commit()
+                        productObj.update_price(title, price, db)
                         updated_count += 1
                     else:
                         duplicate_count += 1
                 
                 else:
                     # Insert new product
-                    new_product = Product(title=title, price=price, image_url=image_path)
-                    db.add(new_product)
-                    db.commit()
+                    new_product = product.create(title=title, price=price, image_url=image_path)
                     inserted_count += 1
         
         return {'inserted_count': inserted_count, 'duplicate_count': duplicate_count, 'updated_count': updated_count}

@@ -1,39 +1,22 @@
-import bcrypt
-import os
-from schema.auth.auth_request import TokenData
-from jose import JWTError, jwt
-from datetime import datetime, timedelta
-from typing import Optional
+from database.configure import SessionLocal, get_db
+from repo.utils.utils import verify_access_token
+from database.models import User
+from fastapi import Depends, HTTPException, Request, status
 
 
-def get_password_hash(password):
-    password_bytes = password.encode('utf-8')
-    salt = bcrypt.gensalt()
-    hashed_password = bcrypt.hashpw(password_bytes, salt)
-    return hashed_password.decode('utf-8')
-
-def check_password(provided_password, hashed_password):
-    provided_password_bytes = provided_password
-    return bcrypt.checkpw(provided_password_bytes, hashed_password)
-
-
-def create_access_token(username: str, expires_delta: Optional[timedelta] = None):
-    to_encode = {"username": username}
-    if expires_delta:
-        expire = datetime.utcnow() + expires_delta
-    else:
-        expire = datetime.utcnow() + timedelta(minutes=15)
-    to_encode.update({"exp": expire})
-    encoded_jwt = jwt.encode(to_encode, os.getenv("JWT_SECRET_KEY"), algorithm=os.getenv("JWT_ALGORITHM"))
-    return encoded_jwt
-
-def verify_access_token(token: str, credentials_exception):
-    try:
-        payload = jwt.decode(token, os.getenv("JWT_SECRET_KEY"), algorithms=[os.getenv("JWT_ALGORITHM")])
-        username: str = payload.get("username")
-        if username is None:
-            raise credentials_exception
-        token_data = TokenData(username=username)
-    except JWTError:
+def get_current_user(request: Request, db: SessionLocal = Depends(get_db)):
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Could not validate credentials",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+    # Extract token from the Authorization header
+    if "authorization" not in request.headers:
         raise credentials_exception
-    return token_data
+    
+    token = request.headers['authorization'].split(" ")[1]
+    token_data = verify_access_token(token, credentials_exception)
+    db_user = User.get(token_data.username, db)
+    if db_user is None:
+        raise credentials_exception
+    return db_user
