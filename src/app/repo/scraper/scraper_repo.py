@@ -56,7 +56,7 @@ class Scraper:
                     price = 0.0
 
                 # Extract image URL
-                image_url = image_element["src"] if image_element else "No image"
+                image_url = image_element["data-lazy-src"] if image_element else "No image"
                 image_path = self.download_image(image_url, title)
 
                 # Check if product exists
