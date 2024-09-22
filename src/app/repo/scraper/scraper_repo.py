@@ -18,7 +18,7 @@ class Scraper:
     def __init__(self, pages: int, max_retries: Optional[int] = 3, proxy: Optional[str] = None):
         self.pages = pages if pages else 1
         self.proxy = proxy
-        self.base_url = "https://dentalstall.com/shop"
+        self.base_url = os.getenv("WEBSITE_ENDPOINT")
         self.max_retries = max_retries
         self.fetch_page = retry(max_retries=self.max_retries, delay=5)(self.fetch_page)
     
