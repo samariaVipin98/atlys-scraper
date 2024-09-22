@@ -83,7 +83,7 @@ class Scraper:
     
     def download_image(self, image_url: str, title: str) -> str:
         # Create a directory for images if it doesn't exist
-        directory = 'src/app/images'
+        directory = '../../images'
         if not os.path.exists(directory):
             os.makedirs(directory)
         

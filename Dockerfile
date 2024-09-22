@@ -21,9 +21,9 @@ RUN pip install --upgrade pip
 
 RUN pip install -r /tempProject/requirements.txt
 
-COPY src/app /tempProject
+COPY . /tempProject
 
-WORKDIR /tempProject
+WORKDIR /tempProject/src/app
 
 EXPOSE 8000
 
